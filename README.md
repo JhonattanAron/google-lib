@@ -14,13 +14,13 @@ Paquete compartido para integrar inicio de sesión con Google en aplicaciones Re
 ## Instalación desde GitHub
 
 ```bash
-npm install git+https://github.com/ORGANIZACION/google-lib.git
+npm install git+https://github.com/JhonattanAron/google-lib.git
 ```
 
-Reemplaza `ORGANIZACION` por el usuario u organización que publique el repositorio. También se puede fijar una versión o commit:
+También puedes fijar una versión o commit:
 
 ```bash
-npm install git+https://github.com/ORGANIZACION/google-lib.git#v1.0.0
+npm install git+https://github.com/JhonattanAron/google-lib.git#v1.0.0
 ```
 
 ## Variables de entorno
@@ -57,6 +57,12 @@ La validación recomendada en el servidor comprueba firma, emisor, expiración y
 - `examples`: ejemplos sin secretos.
 - `docs/EXTRACTION-PLAN.md`: pasos para completar la separación de Invox.
 
+## Apóyame
+
+Si este proyecto te resulta útil, puedes seguirme en [Instagram](https://www.instagram.com/jhonattan_aron/).
+
 ## Seguridad
 
 Guarda el Client Secret en el servidor. Restringe los dominios de redirect URI en Google Cloud. Verifica el token en backend y aplica allí las políticas de creación de cuenta, autorización y emisión de JWT propios.
+
+
