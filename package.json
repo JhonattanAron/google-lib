@@ -1,0 +1,12 @@
+{
+  "name": "@YOUR_ORG/google-lib",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Reusable Google OAuth integration adapters for React/Next.js and Node.js backends",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {"build": "tsc -p tsconfig.json"},
+  "peerDependencies": {"next-auth": ">=5.0.0-beta.0", "react": ">=18"},
+  "devDependencies": {"typescript": "^5.7.0"}
+}
