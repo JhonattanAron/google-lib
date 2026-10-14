@@ -1,15 +1,12 @@
 # google-lib
 
-Paquete compartido para integrar inicio de sesión con Google en aplicaciones React/Next.js y validar la identidad en un backend Node.js. El paquete abstrae la integración con Google; cada aplicación conserva su modelo de usuarios, sesión y permisos.
-
-> Estado: estructura inicial de extracción. Revisar `docs/EXTRACTION-PLAN.md` antes de usar en producción. El endpoint Google actual de Invox recibe email/nombre; el backend debería validar un ID token o intercambiar un código OAuth antes de confiar en esos datos.
+Integración reutilizable de Google OAuth para Auth.js v5 y backends Node.js. Incluye un botón React, provider Auth.js y verificación de ID token en servidor. La aplicación mantiene su modelo de usuarios, sesión, permisos y emisión de JWT.
 
 ## Requisitos
 
 - Node.js 20 o superior.
-- Proyecto frontend con React. Para el adaptador actual de Next.js, usar Auth.js/NextAuth v5.
-- Backend Node.js. El adaptador NestJS es opcional.
-- Proyecto OAuth configurado en Google Cloud Console.
+- Auth.js/NextAuth v5 y React 18+ para los adaptadores frontend.
+- Proyecto OAuth Web Client configurado en Google Cloud Console.
 
 ## Instalación desde GitHub
 
@@ -17,7 +14,7 @@ Paquete compartido para integrar inicio de sesión con Google en aplicaciones Re
 npm install git+https://github.com/JhonattanAron/google-lib.git
 ```
 
-También puedes fijar una versión o commit:
+Para fijar una versión o commit:
 
 ```bash
 npm install git+https://github.com/JhonattanAron/google-lib.git#v1.0.0
@@ -25,44 +22,74 @@ npm install git+https://github.com/JhonattanAron/google-lib.git#v1.0.0
 
 ## Variables de entorno
 
-El frontend/server Auth.js necesita:
-
 ```dotenv
+# Auth.js (solo servidor)
 AUTH_SECRET=pon_aqui_un_secreto_aleatorio_largo
 AUTH_GOOGLE_ID=tu_client_id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=tu_client_secret
-GOOGLE_AUTH_CALLBACK_URL=http://localhost:3000/api/auth/callback/google
-```
+AUTH_URL=http://localhost:3000
 
-El callback debe coincidir exactamente con el URI autorizado en Google Cloud. Para producción, reemplaza localhost por el dominio HTTPS real. En el cliente web solo se usa el Client ID; **nunca expongas el Client Secret**.
-
-Si el backend recibe el token directamente, configura el ID de audiencia esperado:
-
-```dotenv
+# Backend: audiencia aceptada por el verificador del ID token
 GOOGLE_CLIENT_ID=tu_client_id.apps.googleusercontent.com
 ```
 
-No pongas secretos en variables `NEXT_PUBLIC_*`, no subas `.env` y no uses credenciales reales en ejemplos.
+En Google Cloud, agrega `http://localhost:3000/api/auth/callback/google` como redirect URI de desarrollo y el callback equivalente de tu dominio HTTPS para producción. Mantén el Client Secret en el servidor; no uses `NEXT_PUBLIC_` para secretos ni subas archivos `.env`.
 
-## Ejemplo de integración
+## Auth.js / Next.js
 
-Configura Google en Auth.js y conecta su callback a la ruta de login propia de tu backend. Consulta [`examples/next-auth.ts`](examples/next-auth.ts). El callback de backend debe validar la identidad antes de crear/iniciar la sesión local.
+```ts
+import NextAuth from "next-auth";
+import { createGoogleAuthJsProvider } from "@jhonattanaron/google-lib/authjs";
 
-La validación recomendada en el servidor comprueba firma, emisor, expiración y audiencia del ID token. El email/nombre enviados por el navegador por sí solos no prueban que el usuario controla esa cuenta.
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers: [createGoogleAuthJsProvider()],
+  session: { strategy: "jwt" },
+});
+```
 
-## Estructura
+El helper lee `AUTH_GOOGLE_ID` y `AUTH_GOOGLE_SECRET` (también admite `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`). Consulta [`examples/authjs-config.ts`](examples/authjs-config.ts).
 
-- `src/frontend`: componentes/adaptadores del flujo web.
-- `src/backend`: validación de credenciales Google y adaptadores Node/Nest.
-- `examples`: ejemplos sin secretos.
-- `docs/EXTRACTION-PLAN.md`: pasos para completar la separación de Invox.
+## Botón React
 
-## Apóyame
+```tsx
+import { GoogleSignInButton } from "@jhonattanaron/google-lib/frontend";
 
-Si este proyecto te resulta útil, puedes seguirme en [Instagram](https://www.instagram.com/jhonattan_aron/).
+<GoogleSignInButton callbackUrl="/dashboard" label="Continuar con Google" className="mi-boton" />
+```
+
+El botón usa `signIn` de Auth.js. Puedes pasar `onError` para tratar errores desde tu aplicación.
+
+## Verificar credencial en backend
+
+El cliente debe enviar el `id_token` emitido por el flujo OAuth; email/nombre no prueban identidad:
+
+```ts
+import { verifyGoogleIdToken } from "@jhonattanaron/google-lib/backend";
+
+const identity = await verifyGoogleIdToken(body.idToken, {
+  clientId: process.env.GOOGLE_CLIENT_ID!,
+});
+if (!identity.emailVerified) throw new Error("Email no verificado");
+// Busca/crea tu usuario por identity.sub y emite la sesión propia de tu app.
+```
+
+`createGoogleLoginHandler` permite conectar una función propia y restringir dominios Workspace. El verificador usa el endpoint `tokeninfo` de Google para comprobar audiencia, issuer, vencimiento y claims. Para alto volumen, Google recomienda validar la firma localmente con una biblioteca oficial y limitar las solicitudes en tu API.
+
+## API exportada
+
+- `createGoogleAuthJsProvider(options?)` — provider Auth.js.
+- `GoogleSignInButton` — botón React listo para usar.
+- `verifyGoogleIdToken(idToken, options)` — identidad OIDC verificada.
+- `createGoogleLoginHandler(options)` — verificación más callback de usuario propio.
 
 ## Seguridad
 
-Guarda el Client Secret en el servidor. Restringe los dominios de redirect URI en Google Cloud. Verifica el token en backend y aplica allí las políticas de creación de cuenta, autorización y emisión de JWT propios.
+El endpoint backend debe validar el token y decidir su propia política de cuentas. No vincules automáticamente cuentas por email sin una política segura. Nunca confíes en datos de perfil enviados por el browser sin token verificado.
 
+## Apóyame
 
+Si esta librería te resulta útil, puedes seguirme en [Instagram](https://www.instagram.com/jhonattan_aron/).
+
+## Licencia
+
+MIT. Consulta [`LICENSE`](LICENSE).
